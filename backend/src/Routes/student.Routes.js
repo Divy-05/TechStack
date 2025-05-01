@@ -7,7 +7,7 @@ import {
     updateStudent, 
     getStudentById,
     deleteStudent 
-} from "../Controllers/studentController.js";
+} from "../Controllers/student.Controller.js";
 import { 
     protectStudent, 
     tuitionAdminprotect 

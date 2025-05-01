@@ -38,12 +38,19 @@ const teacherSchema = new mongoose.Schema({
       required: true,
     },
   },
+  
+  status: {
+    type: String,
+    enum: ['Active', 'Blocked'],
+    default: 'Active'
+  },
 
-  tuition_admin_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'TuitionAdmin',
-    required: true,
-  }
+  createdBy: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'TuitionAdmin', 
+      required: true 
+  },
+
 }, {
     createdAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }) },
     updatedAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }) }

@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 
 // Generate JWT Token
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  return jwt.sign({ id }, process.env.JWT_SECRET_ADMIN, { expiresIn: "1h" });
 };
 
 // Register Admin
@@ -19,7 +19,7 @@ const registerAdmin = async (req, res) => {
 
     const adminExists = await pseudoAdmin.findOne({ email });
     if (adminExists) {
-      return res.status(409).json({ message: "Admin already exists" }); // 409 Conflict
+      return res.status(409).json({ message: "Admin already exists" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -43,6 +43,7 @@ const registerAdmin = async (req, res) => {
 
 // Login Admin
 const loginAdmin = async (req, res) => {
+  console.log(pseudoAdmin)
   try {
     const { email, password } = req.body;
 
@@ -51,7 +52,7 @@ const loginAdmin = async (req, res) => {
     }
 
     const admin = await pseudoAdmin.findOne({ email });
-
+    console.log("Admin : ",admin)
     if (admin) {
       const isMatch = await bcrypt.compare(password, admin.password);
       if (isMatch) {
@@ -66,6 +67,7 @@ const loginAdmin = async (req, res) => {
 
     res.status(401).json({ message: "Invalid email or password" });
   } catch (error) {
+    console.log(error)
     res.status(500).json({ message: error.message });
   }
 };

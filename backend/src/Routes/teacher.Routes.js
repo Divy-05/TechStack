@@ -5,7 +5,7 @@ import {
     getAllTeachers,
     getTeacherById,
     deleteTeacher,
-} from "../Controllers/teacherController.js";
+} from "../Controllers/teacher.Controller.js";
 import { 
     tuitionAdminprotect 
 } from "../Middleware/authMiddleware.js";

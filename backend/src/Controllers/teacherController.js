@@ -1,4 +1,5 @@
 import Teacher from "../Model/teacherModel.js";
+import TuitionAdmin from "../Model/tuitionAdmin.js";
 
 // Create a new teacher
 const createTeacher = async (req, res) => {
@@ -13,55 +14,110 @@ const createTeacher = async (req, res) => {
       availability_time_slots,
     } = req.body;
 
-    if (
-      !name ||
-      !email ||
-      !contact_number ||
-      !qualification ||
-      !subjects ||
-      !availability_days ||
-      !availability_time_slots
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields." });
+    // Check if teacher already exists
+    const teacherExists = await Teacher.findOne({ email });
+    if (teacherExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Teacher with this email already exists",
+      });
     }
 
-    const subjectsArray = subjects.split(",").map((item) => item.trim());
-    const daysArray = availability_days.split(",").map((item) => item.trim());
-    const timeSlotsArray = availability_time_slots
-      .split(",")
-      .map((item) => item.trim());
-
-    const newTeacher = new Teacher({
+    // Create new teacher
+    const teacher = new Teacher({
       name,
       email,
       contact_number,
       qualification,
-      subjects: subjectsArray,
+      subjects: subjects.split(",").map((item) => item.trim()),
       availability: {
-        days: daysArray,
-        time_slots: timeSlotsArray,
+        days: availability_days.split(",").map((item) => item.trim()),
+        time_slots: availability_time_slots
+          .split(",")
+          .map((item) => item.trim()),
       },
-      tuition_admin_id: req.admin._id,
+      createdBy: req.admin._id, // Changed from tuition_admin_id to createdBy
     });
 
-    const savedTeacher = await newTeacher.save();
+    await teacher.save();
+
+    // Update admin permissions
+    await TuitionAdmin.findByIdAndUpdate(
+      req.admin._id,
+      {
+        "permissions.manage_teachers": true,
+      },
+      { new: true }
+    );
 
     res.status(201).json({
+      success: true,
       message: "Teacher created successfully",
-      data: savedTeacher,
+      data: teacher,
     });
   } catch (error) {
     console.error(error);
     res.status(400).json({
+      success: false,
       message: "Error creating teacher",
-      error: error.message || error,
+      error: error.message,
     });
   }
 };
 
-// Update teacher
+// Get all teachers for the logged-in admin
+const getAllTeachers = async (req, res) => {
+  try {
+    const teachers = await Teacher.find({ createdBy: req.admin._id }).select(
+      "-__v"
+    );
+
+    res.status(200).json({
+      success: true,
+      count: teachers.length,
+      data: teachers,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving teachers",
+      error: error.message,
+    });
+  }
+};
+
+// Get teacher by ID (only if created by the logged-in admin)
+const getTeacherById = async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({
+      _id: req.params.id,
+      createdBy: req.admin._id,
+    }).select("-__v");
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Teacher not found or you don't have permission to view this teacher",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: teacher,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving teacher",
+      error: error.message,
+    });
+  }
+};
+
+// Update teacher (only if created by the logged-in admin)
 const updateTeacher = async (req, res) => {
   try {
     const {
@@ -74,12 +130,26 @@ const updateTeacher = async (req, res) => {
       availability_time_slots,
     } = req.body;
 
-    // Process arrays if they are provided as strings
+    // First check if teacher exists and belongs to this admin
+    const teacher = await Teacher.findOne({
+      _id: req.params.id,
+      createdBy: req.admin._id,
+    });
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Teacher not found or you don't have permission to update this teacher",
+      });
+    }
+
+    // Process updates
     const updates = {
-      name,
-      email,
-      contact_number,
-      qualification,
+      name: name || teacher.name,
+      email: email || teacher.email,
+      contact_number: contact_number || teacher.contact_number,
+      qualification: qualification || teacher.qualification,
     };
 
     if (subjects) {
@@ -95,108 +165,108 @@ const updateTeacher = async (req, res) => {
       };
     }
 
-    const updatedTeacher = await Teacher.findOneAndUpdate(
-      { _id: req.params.id, tuition_admin_id: req.admin._id },
+    const updatedTeacher = await Teacher.findByIdAndUpdate(
+      req.params.id,
       updates,
       { new: true }
     );
 
-    if (!updatedTeacher) {
-      return res.status(404).json({ message: "Teacher not found" });
-    }
-
     res.status(200).json({
+      success: true,
       message: "Teacher updated successfully",
       data: updatedTeacher,
     });
   } catch (error) {
     console.error(error);
     res.status(400).json({
+      success: false,
       message: "Error updating teacher",
-      error: error.message || error,
+      error: error.message,
     });
   }
 };
 
-// Get all teachers
-const getAllTeachers = async (req, res) => {
-  try {
-    const teachers = await Teacher.find({ tuition_admin_id: req.admin._id });
-    res.status(200).json({
-      message: "Teachers retrieved successfully",
-      data: teachers,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Error retrieving teachers",
-      error: error.message || error,
-    });
-  }
-};
-
-// Get teacher by ID
-const getTeacherById = async (req, res) => {
-  try {
-    const teacher = await Teacher.findOne({
-      _id: req.params.id,
-      tuition_admin_id: req.admin._id,
-    });
-
-    if (!teacher) {
-      return res.status(404).json({ message: "Teacher not found" });
-    }
-
-    res.status(200).json({
-      message: "Teacher retrieved successfully",
-      data: teacher,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Error retrieving teacher",
-      error: error.message || error,
-    });
-  }
-};
-
-// Delete teacher - Only accessible by the tuition admin who created the teacher
+// Delete teacher (only if created by the logged-in admin)
 const deleteTeacher = async (req, res) => {
   try {
-    // Check if teacher exists and belongs to the current admin
-    const teacher = await Teacher.findOne({
+    const teacher = await Teacher.findOneAndDelete({
       _id: req.params.id,
-      tuition_admin_id: req.admin._id
+      createdBy: req.admin._id,
     });
 
     if (!teacher) {
-      return res.status(404).json({ 
-        message: "Teacher not found or you don't have permission to delete this teacher" 
+      return res.status(404).json({
+        success: false,
+        message:
+          "Teacher not found or you don't have permission to delete this teacher",
       });
     }
 
-    // Delete the teacher
-    await Teacher.findByIdAndDelete(req.params.id);
-
     res.status(200).json({
       success: true,
-      message: "Teacher deleted successfully"
+      message: "Teacher deleted successfully",
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
       message: "Error deleting teacher",
-      error: error.message
+      error: error.message,
+    });
+  }
+};
+
+// Update teacher status
+const teacherStatusUpdate = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!["Active", "Blocked"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value. Must be either 'Active' or 'Blocked'",
+      });
+    }
+
+    const teacher = await Teacher.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        createdBy: req.admin._id,
+      },
+      { status },
+      { new: true }
+    );
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Teacher not found or you don't have permission to update this teacher",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Teacher ${
+        status === "Blocked" ? "blocked" : "activated"
+      } successfully`,
+      data: teacher,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update teacher status",
+      error: error.message,
     });
   }
 };
 
 export {
   createTeacher,
-  updateTeacher,
   getAllTeachers,
   getTeacherById,
+  updateTeacher,
   deleteTeacher,
+  teacherStatusUpdate,
 };

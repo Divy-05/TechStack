@@ -5,28 +5,34 @@ const tuitionAdminSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
+
     email: { 
         type: String, 
         required: true, 
         unique: true 
     },
+
     password: { 
         type: String, 
         required: true 
-    }, // Will be hashed before saving
+    },
+
     institution_name: { 
         type: String, 
         // required: true 
     },
+
     contact_number: { 
         type: String, 
         required: true,
         unique: true  
     },
+
     address: { 
         type: String, 
         // required: true 
     },
+
     permissions: {
         manage_students: { type: Boolean, default: false },
         manage_teachers: { type: Boolean, default: false },
@@ -36,6 +42,13 @@ const tuitionAdminSchema = new mongoose.Schema({
         send_notifications: { type: Boolean, default: false },
         generate_reports: { type: Boolean, default: false }
     },
+
+    status: {
+        type: String,
+        enum: ['Active', 'Blocked'],
+        default: 'Active'
+    },
+
     createdAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }) },
     updatedAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }) }
 });
@@ -46,6 +59,6 @@ tuitionAdminSchema.pre("save", function (next) {
     next();
 });
 
-const TuitionAdmin = mongoose.model("TuitionAdmin", tuitionAdminSchema);
+const TuitionAdmin = mongoose.models.TuitionAdmin || mongoose.model("TuitionAdmin", tuitionAdminSchema);
 
 export default TuitionAdmin;
