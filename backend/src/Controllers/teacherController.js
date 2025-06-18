@@ -1,5 +1,12 @@
 import Teacher from "../Model/teacherModel.js";
 import TuitionAdmin from "../Model/tuitionAdmin.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+// Generate JWT Token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+};
 
 // Create a new teacher
 const createTeacher = async (req, res) => {
@@ -7,6 +14,7 @@ const createTeacher = async (req, res) => {
     const {
       name,
       email,
+      password,
       contact_number,
       qualification,
       subjects,
@@ -23,10 +31,14 @@ const createTeacher = async (req, res) => {
       });
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Create new teacher
     const teacher = new Teacher({
       name,
       email,
+      password: hashedPassword,
       contact_number,
       qualification,
       subjects: subjects.split(",").map((item) => item.trim()),
@@ -216,7 +228,7 @@ const deleteTeacher = async (req, res) => {
   }
 };
 
-// Update teacher status
+// Update teacher status by Tuition Admin
 const teacherStatusUpdate = async (req, res) => {
   try {
     const { status } = req.body;
@@ -262,6 +274,161 @@ const teacherStatusUpdate = async (req, res) => {
   }
 };
 
+const loginTeacher = async (req, res) => {
+  try {
+    const { email, contact_number, password } = req.body;
+
+    if (!email && !contact_number) {
+      return res
+        .status(400)
+        .json({ message: "Email or contact number is required" });
+    }
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    const teacher = await Teacher.findOne({
+      $or: [{ email }, { contact_number }],
+    });
+    if (!teacher) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email/contact number or password" });
+    }
+
+    const isMatch = await bcrypt.compare(password, teacher.password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ message: "Invalid email/contact number or password" });
+    }
+
+    res.status(200).json({
+      _id: teacher._id,
+      name: teacher.name,
+      email: teacher.email,
+      contact_number: teacher.contact_numberTeacher,
+      token: generateToken(teacher._id),
+      status: teacher.status,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to Login teacher",
+      error: error.message,
+    });
+  }
+}
+
+// Update Permission by Tuition Admin
+// const permissionUpdate = async (req, res) => {
+//   try {
+//     const { permissionKey, value } = req.body;
+
+//     const validPermissions = [
+//       'manage_students',
+//       'manage_attendance',
+//       'manage_exams',
+//       'generate_reports'
+//     ];
+
+//     if (!validPermissions.includes(permissionKey)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Invalid permission key'
+//       });
+//     }
+
+//     const updatedTeacher = await Teacher.findOneAndUpdate(
+//       {
+//         _id: req.params.id,
+//         createdBy: req.admin._id,
+//       },
+//       { [`permissions.${permissionKey}`]: value },
+//       { new: true }
+//     );
+
+//     if (!updatedTeacher) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Teacher not found or you don't have permission to update this teacher"
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: 'Permission updated successfully',
+//       data: updatedTeacher.permissions
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to update Permission',
+//       error: error.message
+//     });
+//   }
+// }
+const permissionUpdate = async (req, res) => {
+  try {
+    const { permissions } = req.body;
+
+    const validPermissions = [
+      'manage_students',
+      'manage_attendance',
+      'manage_exams',
+      'generate_reports'
+    ];
+
+    const invalidKeys = Object.keys(permissions).filter(
+      key => !validPermissions.includes(key)
+    );
+
+    if (invalidKeys.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid permission keys: ${invalidKeys.join(', ')}`
+      });
+    }
+
+    const updateFields = {};
+    for (const key in permissions) {
+      updateFields[`permissions.${key}`] = permissions[key];
+    }
+
+    const updatedTeacher = await Teacher.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        createdBy: req.admin._id,
+      },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (!updatedTeacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found or you don't have permission to update this teacher"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Permissions updated successfully',
+      data: updatedTeacher.permissions
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update permissions',
+      error: error.message
+    });
+  }
+};
+
 export {
   createTeacher,
   getAllTeachers,
@@ -269,4 +436,6 @@ export {
   updateTeacher,
   deleteTeacher,
   teacherStatusUpdate,
+  loginTeacher,
+  permissionUpdate
 };

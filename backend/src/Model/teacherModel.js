@@ -13,6 +13,11 @@ const teacherSchema = new mongoose.Schema({
     unique: true,
   },
 
+  password: {
+    type: String,
+    required: true,
+  },
+
   contact_number: {
     type: Number,
     required: true,
@@ -45,16 +50,23 @@ const teacherSchema = new mongoose.Schema({
     default: 'Active'
   },
 
+  permissions: {
+    manage_students: { type: Boolean, default: false },
+    manage_attendance: { type: Boolean, default: false },
+    manage_exams: { type: Boolean, default: false },
+    generate_reports: { type: Boolean, default: false }
+  },
+
   createdBy: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'TuitionAdmin', 
       required: true 
   },
-
-}, {
+  
     createdAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }) },
     updatedAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }) }
-});
+
+}, );
 
 // Middleware to update the `updatedAt` timestamp on save
 teacherSchema.pre("save", function (next) {

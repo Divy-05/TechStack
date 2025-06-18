@@ -8,7 +8,11 @@ import {
   changePassword,
 } from "../Controllers/tuitionAdmin.Controller.js";
 import { tuitionAdminprotect } from "../Middleware/authMiddleware.js"; // Import middleware
-import { teacherStatusUpdate } from "../Controllers/teacher.Controller.js";
+import { 
+  teacherStatusUpdate, 
+  permissionUpdate
+} from "../Controllers/teacher.Controller.js";
+
 const router = express.Router();
 
 router.post("/register", registerTuitionAdmin);
@@ -19,5 +23,6 @@ router.delete("/delete", tuitionAdminprotect, deleteTuitionAdmin);
 router.put("/changePassword", tuitionAdminprotect, changePassword);
 
 router.patch("/teacherstatus/:id", tuitionAdminprotect, teacherStatusUpdate);
+router.put("/permissionUpdate/:id", tuitionAdminprotect, permissionUpdate);
 
 export default router;

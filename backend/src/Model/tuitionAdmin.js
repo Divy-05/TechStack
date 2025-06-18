@@ -23,7 +23,7 @@ const tuitionAdminSchema = new mongoose.Schema({
     },
 
     contact_number: { 
-        type: String, 
+        type: Number, 
         required: true,
         unique: true  
     },
