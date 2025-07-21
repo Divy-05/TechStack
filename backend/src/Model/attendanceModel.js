@@ -15,13 +15,13 @@ const attendanceModelSchema = new mongoose.Schema({
   teacher_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Teacher",
-    // Not required, can be null if created by admin
+    // Optional, only if created by teacher
   },
 
   tuition_admin_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "TuitionAdmin",
-    // Not required, can be null if created by teacher
+    // required: true, // Now required
   },
 
   status: {
@@ -32,8 +32,8 @@ const attendanceModelSchema = new mongoose.Schema({
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    refPath: "createdByModel",
     required: true,
+    refPath: "createdByModel",
   },
 
   createdByModel: {
@@ -42,7 +42,7 @@ const attendanceModelSchema = new mongoose.Schema({
     required: true,
   },
 
-  createdAt: {type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),},
+  createdAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),},
   updatedAt: { type: String, default: () => new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),},
 });
 
@@ -57,16 +57,3 @@ attendanceModelSchema.pre("save", function (next) {
 const Attendance = mongoose.model("Attendance", attendanceModelSchema);
 
 export default Attendance;
-
-
-/* 
-there are some fix like   
-createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    refPath: "createdByModel", = only tutuion admin id 
-    required: true,
-}, 
- 
-add func. tuition admin or teacher can add atendance only there tution student not other student 
-*/
-
